@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - preConditions:
+      - dbms:
+          type: postgresql
+      - runningAs:
+          username: document
+
+  - includeAll:
+      path: db/changelog/v1.0.0/
+      errorIfMissingOrEmpty: true

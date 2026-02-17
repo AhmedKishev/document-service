@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20240217-03
+      author: itqgroup
+      changes:
+        - createTable:
+            tableName: approval_registry
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_approval_registry
+              - column:
+                  name: document_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: approved_by
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approval_number
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+  - changeSet:
+      id: 20240217-03-foreign-key
+      author: itqgroup
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_registry_document
+            baseTableName: approval_registry
+            baseColumnNames: document_id
+            referencedTableName: documents
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 20240217-03-indexes
+      author: itqgroup
+      changes:
+        - createIndex:
+            indexName: idx_registry_approved_at
+            tableName: approval_registry
+            columns:
+              - column:
+                  name: approved_at
+        - createIndex:
+            indexName: idx_registry_approved_by
+            tableName: approval_registry
+            columns:
+              - column:
+                  name: approved_by
