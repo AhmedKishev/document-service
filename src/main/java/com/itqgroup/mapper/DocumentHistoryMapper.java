@@ -1,7 +1,7 @@
 package com.itqgroup.mapper;
 
+import com.itqgroup.dto.DocumentAction;
 import com.itqgroup.model.Document;
-import com.itqgroup.model.DocumentAction;
 import com.itqgroup.model.DocumentHistory;
 
 public class DocumentHistoryMapper {
@@ -10,7 +10,7 @@ public class DocumentHistoryMapper {
         return DocumentHistory.builder()
                 .initiator(initiator)
                 .document(document)
-                .action(DocumentAction.SUBMIT)
+                .action(DocumentAction.CREATE)
                 .comment("Document was created")
                 .build();
     }

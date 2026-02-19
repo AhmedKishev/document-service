@@ -1,6 +1,6 @@
 package com.itqgroup.dto;
 
-import com.itqgroup.model.DocumentAction;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;

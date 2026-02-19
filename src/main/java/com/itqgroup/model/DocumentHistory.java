@@ -1,5 +1,6 @@
 package com.itqgroup.model;
 
+import com.itqgroup.dto.DocumentAction;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;

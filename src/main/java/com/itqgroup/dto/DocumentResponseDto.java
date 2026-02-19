@@ -1,6 +1,5 @@
 package com.itqgroup.dto;
 
-import com.itqgroup.model.DocumentStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

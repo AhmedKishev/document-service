@@ -19,4 +19,13 @@ public class GlobalExceptionHandler {
                 .build();
     }
 
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleInvalidStatus(final InvalidStatusTransitionException ex) {
+        return ErrorResponse.builder()
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
 }

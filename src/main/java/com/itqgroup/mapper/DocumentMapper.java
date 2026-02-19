@@ -3,9 +3,9 @@ package com.itqgroup.mapper;
 import com.itqgroup.dto.DocumentHistoryDto;
 import com.itqgroup.dto.DocumentRequestDto;
 import com.itqgroup.dto.DocumentResponseDto;
+import com.itqgroup.dto.DocumentStatus;
 import com.itqgroup.model.Document;
 import com.itqgroup.model.DocumentHistory;
-import com.itqgroup.model.DocumentStatus;
 
 import java.util.List;
 

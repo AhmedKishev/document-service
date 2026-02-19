@@ -1,6 +1,7 @@
 package com.itqgroup.model;
 
 
+import com.itqgroup.dto.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -55,6 +56,7 @@ public class Document {
     public void addHistory(DocumentHistory documentHistory) {
         history = new ArrayList<>();
         history.add(documentHistory);
+        documentHistory.setDocument(this);
     }
 
 

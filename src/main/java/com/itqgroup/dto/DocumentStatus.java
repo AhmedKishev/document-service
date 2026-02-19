@@ -1,4 +1,4 @@
-package com.itqgroup.model;
+package com.itqgroup.dto;
 
 public enum DocumentStatus {
     DRAFT,

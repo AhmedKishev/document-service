@@ -23,12 +23,20 @@ spring:
 worker:
   submit:
     enabled: true
-    fixed-delay: 60000 # 1 minute
-    batch-size: 100
+    fixed-delay: 10000
+    batch-size: 10
   approve:
     enabled: true
-    fixed-delay: 60000 # 1 minute
-    batch-size: 100
+    fixed-delay: 10000
+    batch-size: 10
+
+generator:
+  n: 100
+  api-url: http://localhost:8080/api/documents
+  default-author: generator
+  title-prefix: generated document
+  initiator: admin
+  batch-size: 10
 
 logging:
   level:
