@@ -73,3 +73,7 @@ java -jar target/document-service-0.0.1-SNAPSHOT.jar
 | `page` | integer | нет | Номер страницы (по умолчанию `0`) | `0` |
 | `size` | integer | нет | Размер страницы (по умолчанию `20`) | `20` |
 | `sort` | string | нет | Сортировка (по умолчанию `createdAt,desc`) | `createdAt,desc` |
+
+### 4. Обработка ошибок
+При попытке получения документа с несуществующим id будет сгенерировано исключение (DocumentNotFoundException) с ошибкой 404.
+Если же, например, попытаться перевести документ сразу из статуса DRAFT в статус APPROVED, то будет выброшено исключение (InvalidStatusTransitionException) 409. Оба исключения обрабатываются глобальным обработчиком исключения GlobalExceptionHandler. 
