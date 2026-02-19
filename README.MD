@@ -7,6 +7,7 @@ Backend-сервис для управления документами с по�
 - Java 17+
 - Docker & Docker Compose
 - Maven
+- Spring Boot
 - PostgreSQL (через Docker)
 
 ##  Запуск сервиса
