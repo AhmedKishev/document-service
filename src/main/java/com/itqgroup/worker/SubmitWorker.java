@@ -13,9 +13,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,6 +35,7 @@ public class SubmitWorker {
     int batchSize;
 
     @Scheduled(fixedDelayString = "${worker.submit.fixed-delay}")
+    @Transactional
     public void processSubmitDocuments() {
         log.info("SUBMIT-worker started. Looking for DRAFT documents, batch size: {}", batchSize);
 
@@ -44,9 +45,9 @@ public class SubmitWorker {
         int totalErrors = 0;
 
         try {
-            List<Document> draftDocuments = documentRepository.findByStatus(
-                    DocumentStatus.DRAFT,
-                    PageRequest.of(0, batchSize)
+            List<Document> draftDocuments = documentRepository.findByStatusWithLock(
+                    DocumentStatus.DRAFT.name(),
+                    batchSize
             );
 
             if (draftDocuments.isEmpty()) {
@@ -64,7 +65,7 @@ public class SubmitWorker {
             request.setIds(documentIds);
             request.setInitiator("SUBMIT-WORKER");
 
-            List<StatusChangeResultDto> results = documentService.submit(request);
+            List<StatusChangeResultDto> results = documentService.submitDocuments(request, draftDocuments);
 
             for (StatusChangeResultDto result : results) {
                 totalProcessed++;

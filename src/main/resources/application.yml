@@ -37,6 +37,7 @@ generator:
   title-prefix: generated document
   initiator: admin
   batch-size: 10
+  generate: false
 
 logging:
   level:

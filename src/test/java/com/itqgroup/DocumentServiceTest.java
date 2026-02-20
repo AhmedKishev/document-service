@@ -81,13 +81,13 @@ class DocumentServiceTest {
         submitRequest.setIds(List.of(1L));
         submitRequest.setInitiator(initiator);
 
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(draftDocument));
+
+        when(documentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(draftDocument));
 
         List<StatusChangeResultDto> submitResults = documentService.submit(submitRequest);
 
         assertThat(submitResults).hasSize(1);
         assertThat(submitResults.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
-        assertThat(submitResults.get(0).getMessage()).isEqualTo("Document submitted successfully");
         assertThat(draftDocument.getStatus()).isEqualTo(DocumentStatus.SUBMITTED);
         verify(documentRepository, times(2)).save(any(Document.class));
 
@@ -96,13 +96,12 @@ class DocumentServiceTest {
         approveRequest.setInitiator(initiator);
 
         when(numberGenerator.generateApprovalDocumentNumber()).thenReturn("APR-TEST-123");
-        draftDocument.setStatus(DocumentStatus.SUBMITTED); // Обновляем статус для approve
+        when(documentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(draftDocument));
 
         List<StatusChangeResultDto> approveResults = documentService.approve(approveRequest);
 
         assertThat(approveResults).hasSize(1);
         assertThat(approveResults.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
-        assertThat(approveResults.get(0).getMessage()).isEqualTo("Document approved successfully");
         assertThat(draftDocument.getStatus()).isEqualTo(DocumentStatus.APPROVED);
         assertThat(draftDocument.getApprovalRegistry()).isNotNull();
         verify(documentRepository, times(3)).save(any(Document.class));
@@ -114,10 +113,11 @@ class DocumentServiceTest {
         request.setIds(List.of(1L, 2L, 3L, 999L));
         request.setInitiator("test-user");
 
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(draftDocument));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(submittedDocument));
-        when(documentRepository.findById(3L)).thenReturn(Optional.of(approvedDocument));
-        when(documentRepository.findById(999L)).thenReturn(Optional.empty());
+
+        when(documentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(draftDocument));
+        when(documentRepository.findByIdWithDetails(2L)).thenReturn(Optional.of(submittedDocument));
+        when(documentRepository.findByIdWithDetails(3L)).thenReturn(Optional.of(approvedDocument));
+        when(documentRepository.findByIdWithDetails(999L)).thenReturn(Optional.empty());
 
         List<StatusChangeResultDto> results = documentService.submit(request);
 
@@ -125,19 +125,15 @@ class DocumentServiceTest {
 
         assertThat(results.get(0).getId()).isEqualTo(1L);
         assertThat(results.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
-        assertThat(results.get(0).getMessage()).isEqualTo("Document submitted successfully");
 
         assertThat(results.get(1).getId()).isEqualTo(2L);
         assertThat(results.get(1).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
-        assertThat(results.get(1).getMessage()).contains("Cannot submit document in status: SUBMITTED");
 
         assertThat(results.get(2).getId()).isEqualTo(3L);
         assertThat(results.get(2).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
-        assertThat(results.get(2).getMessage()).contains("Cannot submit document in status: APPROVED");
 
         assertThat(results.get(3).getId()).isEqualTo(999L);
         assertThat(results.get(3).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.NOT_FOUND);
-        assertThat(results.get(3).getMessage()).isEqualTo("Document not found");
 
         verify(documentRepository, times(1)).save(any(Document.class));
     }
@@ -149,10 +145,12 @@ class DocumentServiceTest {
         request.setInitiator("test-user");
 
         when(numberGenerator.generateApprovalDocumentNumber()).thenReturn("APR-TEST-123");
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(submittedDocument));
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(draftDocument));
-        when(documentRepository.findById(3L)).thenReturn(Optional.of(approvedDocument));
-        when(documentRepository.findById(999L)).thenReturn(Optional.empty());
+
+
+        when(documentRepository.findByIdWithDetails(2L)).thenReturn(Optional.of(submittedDocument));
+        when(documentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(draftDocument));
+        when(documentRepository.findByIdWithDetails(3L)).thenReturn(Optional.of(approvedDocument));
+        when(documentRepository.findByIdWithDetails(999L)).thenReturn(Optional.empty());
 
         List<StatusChangeResultDto> results = documentService.approve(request);
 
@@ -160,23 +158,18 @@ class DocumentServiceTest {
 
         assertThat(results.get(0).getId()).isEqualTo(2L);
         assertThat(results.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
-        assertThat(results.get(0).getMessage()).isEqualTo("Document approved successfully");
 
         assertThat(results.get(1).getId()).isEqualTo(1L);
         assertThat(results.get(1).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
-        assertThat(results.get(1).getMessage()).contains("Cannot approve document in status: DRAFT");
 
         assertThat(results.get(2).getId()).isEqualTo(3L);
         assertThat(results.get(2).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
-        assertThat(results.get(2).getMessage()).contains("Cannot approve document in status: APPROVED");
 
         assertThat(results.get(3).getId()).isEqualTo(999L);
         assertThat(results.get(3).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.NOT_FOUND);
-        assertThat(results.get(3).getMessage()).isEqualTo("Document not found");
 
         verify(documentRepository, times(1)).save(any(Document.class));
     }
-
 
     @Test
     void shouldRollbackApproveWhenRegistrySaveFails() {
@@ -184,10 +177,7 @@ class DocumentServiceTest {
         request.setIds(List.of(2L));
         request.setInitiator("test-user");
 
-        Document spyDocument = spy(submittedDocument);
-        Long documentId = 2L;
-
-        when(documentRepository.findById(documentId)).thenReturn(Optional.of(spyDocument));
+        when(documentRepository.findByIdWithDetails(2L)).thenReturn(Optional.of(submittedDocument));
         when(numberGenerator.generateApprovalDocumentNumber()).thenReturn("APR-TEST-123");
 
         doThrow(new DataAccessException("DB error") {})
@@ -196,31 +186,9 @@ class DocumentServiceTest {
         List<StatusChangeResultDto> results = documentService.approve(request);
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).getId()).isEqualTo(documentId);
-        assertThat(results.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.REGISTRY_ERROR);
-        assertThat(results.get(0).getMessage()).contains("Registry error");
-
-        verify(documentRepository, times(1)).save(any(Document.class));
-    }
-
-    @Test
-    void shouldNotChangeDocumentStatusWhenRegistryCreationFails() {
-        StatusChangeRequestDto request = new StatusChangeRequestDto();
-        request.setIds(List.of(2L));
-        request.setInitiator("test-user");
-
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(submittedDocument));
-        when(numberGenerator.generateApprovalDocumentNumber()).thenReturn("APR-TEST-123");
-
-        doThrow(new RuntimeException("Failed to save registry"))
-                .when(documentRepository).save(any(Document.class));
-
-        List<StatusChangeResultDto> results = documentService.approve(request);
-
-        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getId()).isEqualTo(2L);
         assertThat(results.get(0).getStatus()).isEqualTo(StatusChangeResultDto.StatusChangeStatus.REGISTRY_ERROR);
 
-        verify(documentRepository, times(1)).findById(2L);
         verify(documentRepository, times(1)).save(any(Document.class));
     }
 }

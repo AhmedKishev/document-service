@@ -1,23 +1,21 @@
 package com.itqgroup.worker;
 
 
-
 import com.itqgroup.dto.DocumentStatus;
 import com.itqgroup.dto.StatusChangeRequestDto;
 import com.itqgroup.dto.StatusChangeResultDto;
 import com.itqgroup.model.Document;
 import com.itqgroup.repository.DocumentRepository;
 import com.itqgroup.service.DocumentService;
-import jakarta.annotation.PostConstruct;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,6 +36,7 @@ public class ApproveWorker {
 
 
     @Scheduled(fixedDelayString = "${worker.approve.fixed-delay}")
+    @Transactional
     public void processApprovedDocuments() {
         log.info("APPROVE-worker started. Looking for SUBMITTED documents, batch size: {}", batchSize);
 
@@ -48,9 +47,9 @@ public class ApproveWorker {
         int totalRegistryErrors = 0;
 
         try {
-            List<Document> submittedDocuments = documentRepository.findByStatus(
-                    DocumentStatus.SUBMITTED,
-                    PageRequest.of(0, batchSize)
+            List<Document> submittedDocuments = documentRepository.findByStatusWithLock(
+                    DocumentStatus.SUBMITTED.name(),
+                    batchSize
             );
 
             if (submittedDocuments.isEmpty()) {
@@ -68,7 +67,7 @@ public class ApproveWorker {
             request.setIds(documentIds);
             request.setInitiator("APPROVE-WORKER");
 
-            List<StatusChangeResultDto> results = documentService.approve(request);
+            List<StatusChangeResultDto> results = documentService.approveDocuments(request, submittedDocuments);
 
             for (StatusChangeResultDto result : results) {
                 totalProcessed++;

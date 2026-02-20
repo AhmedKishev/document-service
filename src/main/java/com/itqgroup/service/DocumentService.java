@@ -18,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -57,7 +56,7 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public DocumentResponseDto getDocument(Long id) {
-        Document document = documentRepository.findById(id)
+        Document document = documentRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found with id: " + id));
         log.info("Document was successful find by id: {}", id);
         return DocumentMapper.toResponseDto(document, true);
@@ -93,12 +92,57 @@ public class DocumentService {
                 .collect(Collectors.toList());
     }
 
+
+    @Transactional
+    public List<StatusChangeResultDto> submitDocuments(StatusChangeRequestDto statusChangeRequestDto, List<Document> documents) {
+        log.info("Processing submit for {} documents", statusChangeRequestDto.getIds().size());
+
+        List<StatusChangeResultDto> changeResultDtos = new ArrayList<>();
+        for (Document document : documents) {
+            StatusChangeResultDto result = new StatusChangeResultDto();
+            try {
+                if (document.getStatus() != DocumentStatus.DRAFT) {
+                    throw new InvalidStatusTransitionException(
+                            "Cannot submit document in status: " + document.getStatus());
+                }
+
+                DocumentHistory history = new DocumentHistory();
+                history.setInitiator(statusChangeRequestDto.getInitiator());
+                history.setAction(DocumentAction.SUBMIT);
+                history.setComment("Document is submitted");
+
+                document.addHistory(history);
+
+                document.setStatus(DocumentStatus.SUBMITTED);
+                documentRepository.save(document);
+
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
+                result.setMessage("Document submitted successfully");
+
+                log.debug("Document {} submitted successfully", document.getId());
+
+            } catch (DocumentNotFoundException e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.NOT_FOUND);
+                result.setMessage("Document not found");
+            } catch (InvalidStatusTransitionException e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
+                result.setMessage(e.getMessage());
+            } catch (Exception e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
+                result.setMessage("Error processing document: " + e.getMessage());
+            }
+        }
+
+        return changeResultDtos;
+    }
+
+
     private StatusChangeResultDto processSubmitDocument(Long documentId, StatusChangeRequestDto request) {
         StatusChangeResultDto result = new StatusChangeResultDto();
         result.setId(documentId);
 
         try {
-            Document document = documentRepository.findById(documentId)
+            Document document = documentRepository.findByIdWithDetails(documentId)
                     .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
 
             if (document.getStatus() != DocumentStatus.DRAFT) {
@@ -135,7 +179,56 @@ public class DocumentService {
         return result;
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+
+    @Transactional
+    public List<StatusChangeResultDto> approveDocuments(StatusChangeRequestDto statusChangeRequestDto, List<Document> documents) {
+        log.info("Processing approve for {} documents", statusChangeRequestDto.getIds().size());
+
+        List<StatusChangeResultDto> changeResultDtos = new ArrayList<>();
+        for (Document document : documents) {
+            StatusChangeResultDto result = new StatusChangeResultDto();
+            try {
+                if (document.getStatus() != DocumentStatus.SUBMITTED) {
+                    throw new InvalidStatusTransitionException(
+                            "Cannot approve document in status: " + document.getStatus());
+                }
+
+                ApprovalRegistry registry = new ApprovalRegistry();
+                registry.setApprovedBy(statusChangeRequestDto.getInitiator());
+                registry.setApprovalNumber(generatorNumber.generateApprovalDocumentNumber());
+                registry.setDocument(document);
+
+                DocumentHistory history = new DocumentHistory();
+                history.setInitiator(statusChangeRequestDto.getInitiator());
+                history.setAction(DocumentAction.APPROVE);
+                history.setComment("Document is approve");
+
+                document.setApprovalRegistry(registry);
+                document.addHistory(history);
+                document.setStatus(DocumentStatus.APPROVED);
+
+                documentRepository.save(document);
+
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.SUCCESS);
+                result.setMessage("Document approved successfully");
+
+                log.info("Document {} approved successfully", document.getId());
+
+            } catch (DocumentNotFoundException e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.NOT_FOUND);
+                result.setMessage("Document not found");
+            } catch (InvalidStatusTransitionException e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.CONFLICT);
+                result.setMessage(e.getMessage());
+            } catch (Exception e) {
+                result.setStatus(StatusChangeResultDto.StatusChangeStatus.REGISTRY_ERROR);
+                result.setMessage("Registry error: " + e.getMessage());
+            }
+        }
+        return changeResultDtos;
+    }
+
+    @Transactional
     public List<StatusChangeResultDto> approve(@Valid StatusChangeRequestDto statusChangeRequestDto) {
         log.info("Processing approve for {} documents", statusChangeRequestDto.getIds().size());
 
@@ -152,7 +245,7 @@ public class DocumentService {
         result.setId(documentId);
 
         try {
-            Document document = documentRepository.findById(documentId)
+            Document document = documentRepository.findByIdWithDetails(documentId)
                     .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
 
             if (document.getStatus() != DocumentStatus.SUBMITTED) {
@@ -246,7 +339,7 @@ public class DocumentService {
             Thread.currentThread().interrupt();
         }
 
-        Document finalDocument = documentRepository.findById(request.getDocumentId()).orElse(null);
+        Document finalDocument = documentRepository.findByIdWithDetails(request.getDocumentId()).orElse(null);
 
         ConcurrencyTestResponseDto response = new ConcurrencyTestResponseDto();
         response.setSuccessfulAttempts(successCount.get());
